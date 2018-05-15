@@ -22,7 +22,15 @@ module.exports = class DBAdapter {
   async getAudioById(id) {
     return await Audio.find({videoId: id}).exec()
   }
-
+  async getTaskById(id) {
+    let task = await Task.findOne({id}).exec()
+    console.log('get task by id')
+    console.log(task)
+    return task
+  }
+  async assignTaskIdByVideoId(videoId,taskId) {
+    return await Task.findOneAndUpdate({videoId},{id:taskId}).exec()
+  }
   async createNewTask(id,token,videoId) {
     let taskDoc = new Task({
       id,

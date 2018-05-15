@@ -6,21 +6,17 @@ const io      = require('socket.io')(server)
 const cheerio = require('cheerio')
 const request = require('request')
 const ytdl = require('youtube-dl')
-const fs = require('fs')
+const axios = require('axios')
 const DBAdapter = require('./db')
+
+//config
+let mongoURL = 'mongodb://localhost:60717/yt'
+let kueURL = 'http://localhost:3100'
+
 // connect to MongoDB
-let db = new DBAdapter('mongodb://localhost:60717/yt')
-// const Audio = mongoose.model('audio',{
-//   name: String,
-//   path: String,
-//   videoId: String
-// })
-// const Task = mongoose.model('task',{
-//   id: String,
-//   token: String,
-//   status: String,
-//   videoId: String,
-// })
+
+const db = new DBAdapter(mongoURL)
+
 
 // connect to kue/redis
 var kue = require('kue')
@@ -32,6 +28,11 @@ var kue = require('kue')
    }
  });
 
+// kue queue query functions
+const getJobStatusById = async (id) => {
+  let resp = await axios.get(`${kueURL}/job/${id}`)
+  return resp.data
+}
 // socket listeners
 let socket = null
 io.on('connection',s => {
@@ -73,18 +74,11 @@ app.get('/audio/:id', async (req, res) => {
             let job = queue.create('audio',{
               id
             })
-
             await db.createNewTask(job.id,token,id)
-
             job.on('start',async () => {
               console.log('job started')
-              try {
-                await db.updateTaskStatus(id,"started")
-                // await Task.findOneAndUpdate({videoId: id},{status: 'started'}).exec()
-              }catch(e) {
-                console.log(e)
-                res.status(500).send('failed to connect to database')
-              }
+              await db.assignTaskIdByVideoId(id,job.id)
+              await db.updateTaskStatus(id,"started")
               await db.createNewAudio(info.title,id,`/audio/${id}.mp3`)
               socket.emit(token,{
                 'type': 'started',
@@ -129,10 +123,21 @@ app.get('/audio/:id', async (req, res) => {
 
 })
 // inqure the status of a particular job
-app.get('/status/:jobid',(req,res) => {
-  let token = req.query.token
-  if(!token) return
+app.get('/status/:jobid',async (req,res) => {
 
+  let token = req.query.token
+  let jobId = req.params.jobid
+  if(!token) {
+    res.status(400).send('missing token')
+    return
+  }
+  let taskDoc = await db.getTaskById(jobId)
+  if(!taskDoc || taskDoc.token != token) {
+    res.status(400).send('either there is no such task, or the token you provided is invalid')
+    return
+  }
+  let status = await getJobStatusById(jobId)
+  res.status(200).send(status)
 })
 
 app.get('/search/:words/:page?', (req,res) => {
@@ -166,4 +171,5 @@ app.get('/search/:words/:page?', (req,res) => {
     }
   })
 })
+kue.app.listen(3100,() => console.log('kue dashboard listening port 3100'))
 server.listen(3000,() => console.log('frontend listening on port 3000'))
