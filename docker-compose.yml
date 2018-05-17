@@ -1,0 +1,27 @@
+version: "3"
+services:
+        mongo:
+                image: mongo
+                ports:
+                        - "60717:27017"
+        redis:
+                image: redis
+                ports:
+                        - "6379:6379"
+        worker:
+                build: ./worker
+                depends_on:
+                        - endpoint
+                links:
+                        - redis
+        endpoint:
+                build: ./endpoint
+                ports:
+                        - "3000:3000"
+                        - "3100:3100"
+                depends_on:
+                        - mongo
+                        - redis
+                links:
+                        - mongo
+                        - redis

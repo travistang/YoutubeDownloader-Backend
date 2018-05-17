@@ -5,7 +5,7 @@ var kue = require('kue')
    prefix: 'q',
    redis: {
      port: 6379,
-     host: 'localhost',
+     host: 'redis',
    }
  });
 

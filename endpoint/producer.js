@@ -10,13 +10,10 @@ const axios = require('axios')
 const DBAdapter = require('./db')
 
 //config
-let mongoURL = 'mongodb://localhost:60717/yt'
+let mongoURL = 'mongodb://mongo:27017/yt'
 let kueURL = 'http://localhost:3100'
-
+let redisHostname = 'redis'
 // connect to MongoDB
-
-const db = new DBAdapter(mongoURL)
-
 
 // connect to kue/redis
 var kue = require('kue')
@@ -24,7 +21,7 @@ var kue = require('kue')
    prefix: 'q',
    redis: {
      port: 6379,
-     host: 'localhost',
+     host: redisHostname,
    }
  });
 
@@ -45,7 +42,7 @@ app.get('/audio/:id', async (req, res) => {
   let id = req.params.id
   let token = req.query.token
 
-
+  const db = new DBAdapter(mongoURL)
   if(!token) {
     res.status(400).send('missing token')
     return
@@ -65,6 +62,7 @@ app.get('/audio/:id', async (req, res) => {
         } else {
           let audioObj = await db.getAudioById(id)
           if(audioObj != 0) {
+            db.close()
             res.status(200).send({
               path: audioObj.path
             })
@@ -91,6 +89,7 @@ app.get('/audio/:id', async (req, res) => {
                 id
               })
               await db.updateTaskStatus(id,'failed')
+              db.close()
               // await Task.findOneAndUpdate({videoId: id},{status: 'failed'}).exec()
             })
             job.on('progress', async (progress) => {
@@ -105,6 +104,7 @@ app.get('/audio/:id', async (req, res) => {
                 id,
                 type: 'completed',
               })
+              db.close()
               await db.updateTaskStatus(id,"completed")
               // await Task.findOneAndUpdate({videoId: id},{status: 'completed'}).exec()
             })
@@ -120,21 +120,24 @@ app.get('/audio/:id', async (req, res) => {
     res.status(500).send('server error')
   }
 
-
 })
 // inqure the status of a particular job
-app.get('/status/:jobid',async (req,res) => {
+app.get('/status/:videoId',async (req,res) => {
 
   let token = req.query.token
-  let jobId = req.params.jobid
+  let videoId = req.params.videoId
   if(!token) {
     res.status(400).send('missing token')
     return
   }
-  let taskDoc = await db.getTaskById(jobId)
+  let taskDoc = await db.getTaskById(videoId)
   if(!taskDoc || taskDoc.token != token) {
     res.status(400).send('either there is no such task, or the token you provided is invalid')
     return
+  }
+  let jobId = taskDoc.id
+  if(!jobId) {
+    return {'status':'queuing'}
   }
   let status = await getJobStatusById(jobId)
   res.status(200).send(status)
@@ -171,5 +174,5 @@ app.get('/search/:words/:page?', (req,res) => {
     }
   })
 })
-kue.app.listen(3100,() => console.log('kue dashboard listening port 3100'))
+kue.app.listen(3100,() => console.log('kue dashboard listening on port 3100'))
 server.listen(3000,() => console.log('frontend listening on port 3000'))

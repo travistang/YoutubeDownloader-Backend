@@ -22,10 +22,11 @@ module.exports = class DBAdapter {
   async getAudioById(id) {
     return await Audio.find({videoId: id}).exec()
   }
+  close() {
+    mongoose.disconnect()
+  }
   async getTaskById(id) {
-    let task = await Task.findOne({id}).exec()
-    console.log('get task by id')
-    console.log(task)
+    let task = await Task.findOne({videoId:id}).exec()
     return task
   }
   async assignTaskIdByVideoId(videoId,taskId) {
