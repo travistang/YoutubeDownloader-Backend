@@ -13,8 +13,9 @@ const DBAdapter = require('./db')
 let mongoURL = 'mongodb://mongo:27017/yt'
 let kueURL = 'http://localhost:3100'
 let redisHostname = 'redis'
-// connect to MongoDB
 
+// connect to MongoDB
+const db = new DBAdapter(mongoURL)
 // connect to kue/redis
 var kue = require('kue')
  , queue = kue.createQueue({
@@ -25,6 +26,8 @@ var kue = require('kue')
    }
  });
 
+// serving static file
+app.use('/storage',express.static('/storage'))
 // kue queue query functions
 const getJobStatusById = async (id) => {
   let resp = await axios.get(`${kueURL}/job/${id}`)
@@ -42,16 +45,18 @@ app.get('/audio/:id', async (req, res) => {
   let id = req.params.id
   let token = req.query.token
 
-  const db = new DBAdapter(mongoURL)
+  // const db = new DBAdapter(mongoURL)
   if(!token) {
     res.status(400).send('missing token')
     return
   }
   if(!socket) {
     res.status(500).send('server not ready')
+    return
   }
   if(id == 0) {
     res.status(400).send('missing ID')
+    return
   }
 
 // TODO: determine the path of downloading file here
@@ -61,14 +66,12 @@ app.get('/audio/:id', async (req, res) => {
           res.status(400).send('invalid video ID')
         } else {
           let audioObj = await db.getAudioById(id)
-          if(audioObj != 0) {
-            db.close()
+          if(audioObj.length != 0) {
+            // db.close()
             res.status(200).send({
               path: audioObj.path
             })
           } else {
-            console.log('download audio')
-
             let job = queue.create('audio',{
               id
             })
@@ -77,7 +80,7 @@ app.get('/audio/:id', async (req, res) => {
               console.log('job started')
               await db.assignTaskIdByVideoId(id,job.id)
               await db.updateTaskStatus(id,"started")
-              await db.createNewAudio(info.title,id,`/audio/${id}.mp3`)
+              await db.createNewAudio(info.title,id,`/storage/${id}.mp3`)
               socket.emit(token,{
                 'type': 'started',
                 id,
@@ -89,7 +92,7 @@ app.get('/audio/:id', async (req, res) => {
                 id
               })
               await db.updateTaskStatus(id,'failed')
-              db.close()
+              // db.close()
               // await Task.findOneAndUpdate({videoId: id},{status: 'failed'}).exec()
             })
             job.on('progress', async (progress) => {
@@ -104,7 +107,7 @@ app.get('/audio/:id', async (req, res) => {
                 id,
                 type: 'completed',
               })
-              db.close()
+              // db.close()
               await db.updateTaskStatus(id,"completed")
               // await Task.findOneAndUpdate({videoId: id},{status: 'completed'}).exec()
             })

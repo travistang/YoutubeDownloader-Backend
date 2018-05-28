@@ -14,6 +14,8 @@ services:
                         - endpoint
                 links:
                         - redis
+                volumes:
+                        - storage:/storage
         endpoint:
                 build: ./endpoint
                 ports:
@@ -25,3 +27,7 @@ services:
                 links:
                         - mongo
                         - redis
+                volumes:
+                        - storage:/storage
+volumes:
+        storage:
