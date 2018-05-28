@@ -8,6 +8,7 @@ const request = require('request')
 const ytdl = require('youtube-dl')
 const axios = require('axios')
 const DBAdapter = require('./db')
+const socketHelper = require('./socket')
 
 //config
 let mongoURL = 'mongodb://mongo:27017/yt'
@@ -34,11 +35,12 @@ const getJobStatusById = async (id) => {
   return resp.data
 }
 // socket listeners
-let socket = null
-io.on('connection',s => {
-  console.log('socket connected')
-  socket = s
-})
+const socket = new socketHelper(server)
+//let socket = null
+//io.on('connection',s => {
+//  console.log('socket connected')
+//  socket = s
+//})
 
 // TODO: check token collision
 app.get('/audio/:id', async (req, res) => {
@@ -50,78 +52,65 @@ app.get('/audio/:id', async (req, res) => {
     res.status(400).send('missing token')
     return
   }
-  if(!socket) {
-    res.status(500).send('server not ready')
-    return
-  }
   if(id == 0) {
     res.status(400).send('missing ID')
     return
   }
+  let existingAudio = await db.getAudioById(id)
+  if(existingAudio) {
+  	return res.status(200).json({
+		id,
+		path: existingAudio.path
+	})
+  } else {
+	  try {
+	    ytdl.getInfo(id,async (err,info) => {
+		if(err) {
+		  res.status(400).send('invalid video ID')
+		} else {
+		   
+		    let job = queue.create('audio',{
+		      id
+		    })
+		    await db.createNewTask(job.id,token,id)
+		    job.on('start',async () => {
+		      console.log('job started')
+		      await db.assignTaskIdByVideoId(id,job.id)
+		      await db.updateTaskStatus(id,"started")
+		      await db.createNewAudio(info.title,id,`/storage/${id}.mp3`)
+		      socket.emitJobStatus(token,"started",id)
+		    })
+		    job.on('failed',async () => {
+		      socket.emitJobStatus(token,"failed",id)
+		      await db.updateTaskStatus(id,'failed')
+		    })
+		    job.on('progress', async (progress) => {
+		      socket.emitJobStatus(token,"progress",id,progress)
+		      await db.updateTaskStatus(id,'progress')
+		    })
 
-// TODO: determine the path of downloading file here
-  try {
-    ytdl.getInfo(id,async (err,info) => {
-        if(err) {
-          res.status(400).send('invalid video ID')
-        } else {
-          let audioObj = await db.getAudioById(id)
-          if(audioObj.length != 0) {
-            // db.close()
-            res.status(200).send({
-              path: audioObj.path
-            })
-          } else {
-            let job = queue.create('audio',{
-              id
-            })
-            await db.createNewTask(job.id,token,id)
-            job.on('start',async () => {
-              console.log('job started')
-              await db.assignTaskIdByVideoId(id,job.id)
-              await db.updateTaskStatus(id,"started")
-              await db.createNewAudio(info.title,id,`/storage/${id}.mp3`)
-              socket.emit(token,{
-                'type': 'started',
-                id,
-              })
-            })
-            job.on('failed',async () => {
-              socket.emit(token,{
-                type: 'failed',
-                id
-              })
-              await db.updateTaskStatus(id,'failed')
-              // db.close()
-              // await Task.findOneAndUpdate({videoId: id},{status: 'failed'}).exec()
-            })
-            job.on('progress', async (progress) => {
-              let payload = {progress,id,token,type: 'progress'}
-              socket.emit(token,payload)
-              await db.updateTaskStatus(id,'progress')
-              // await Task.findOneAndUpdate({videoId: id},{status: 'progress'}).exec()
-            })
+		    job.on('complete',async () => {
+			socket.emitJobStatus(token,'completed',id)
+	//              socket.emit(token,{
+	//                id,
+	//                type: 'completed',
+	//              })
+		      // db.close()
+		      await db.updateTaskStatus(id,"completed")
+		      // await Task.findOneAndUpdate({videoId: id},{status: 'completed'}).exec()
+		    })
+		    job.save(() => {
+		      res.status(200).send({id:job.id})
+		    })
 
-            job.on('complete',async () => {
-              socket.emit(token,{
-                id,
-                type: 'completed',
-              })
-              // db.close()
-              await db.updateTaskStatus(id,"completed")
-              // await Task.findOneAndUpdate({videoId: id},{status: 'completed'}).exec()
-            })
-            job.save(() => {
-              res.status(200).send({id:job.id})
-            })
-          }
-
-        }
-      })
-  }catch(err) {
-    throw(err)
-    res.status(500).send('server error')
+		}
+	      })
+	  }catch(err) {
+	    throw(err)
+	    res.status(500).send('server error')
+	  }
   }
+// TODO: determine the path of downloading file here
 
 })
 // inqure the status of a particular job

@@ -29,5 +29,13 @@ services:
                         - redis
                 volumes:
                         - storage:/storage
+        adminmongo:
+                build: ./adminMongo
+                ports:
+                        - "1234:1234"
+                depends_on:
+                        - mongo
+                links:
+                        - mongo
 volumes:
         storage:

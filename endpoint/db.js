@@ -20,7 +20,7 @@ module.exports = class DBAdapter {
     return await Task.findOneAndUpdate({videoId: id},{status: status}).exec()
   }
   async getAudioById(id) {
-    return await Audio.find({videoId: id}).exec()
+    return await Audio.findOne({videoId: id}).exec()
   }
   close() {
     mongoose.disconnect()
