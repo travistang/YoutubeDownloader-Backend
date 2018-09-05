@@ -1,13 +1,16 @@
 version: "3"
 services:
+        # The database
         mongo:
                 image: mongo
                 ports:
                         - "60717:27017"
+        # message broker
         redis:
                 image: redis
                 ports:
                         - "6379:6379"
+        # worker for downloading videos
         worker:
                 build: ./worker
                 depends_on:
@@ -16,6 +19,7 @@ services:
                         - redis
                 volumes:
                         - storage:/storage
+        # API endpoint serving the requests
         endpoint:
                 build: ./endpoint
                 ports:
@@ -29,6 +33,7 @@ services:
                         - redis
                 volumes:
                         - storage:/storage
+        # UI visualizing internal structure of the database
         adminmongo:
                 build: ./adminMongo
                 ports:

@@ -1,3 +1,4 @@
+// script for testing out the functionality of the backend
 var socket = require('socket.io-client')('http://localhost:3000');
 const request = require('request')
 socket.on('connect', () => {

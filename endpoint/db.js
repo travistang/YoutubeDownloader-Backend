@@ -1,14 +1,15 @@
 const mongoose = require('mongoose')
-const Audio = mongoose.model('audio',{
-  name: String,
-  path: String,
-  videoId: String
-})
+// const Audio = mongoose.model('audio',{
+//   name: String,
+//   path: String,
+//   videoId: String
+// })
 const Task = mongoose.model('task',{
-  id: String,
-  token: String,
-  status: String,
-  videoId: String,
+  id: String, // identify amonst the tasks themselves
+  token: String, // identify the task submitter
+  status: String, // the job status, one of 'completed, queuing,downloading,...'
+  name: String, // the name of the Video
+  thumbnail: String, // the path of thumbnail
 })
 
 module.exports = class DBAdapter {
@@ -18,9 +19,6 @@ module.exports = class DBAdapter {
   }
   async updateTaskStatus(id,status) {
     return await Task.findOneAndUpdate({videoId: id},{status: status}).exec()
-  }
-  async getAudioById(id) {
-    return await Audio.findOne({videoId: id}).exec()
   }
   close() {
     mongoose.disconnect()
@@ -32,20 +30,23 @@ module.exports = class DBAdapter {
   async assignTaskIdByVideoId(videoId,taskId) {
     return await Task.findOneAndUpdate({videoId},{id:taskId}).exec()
   }
-  async createNewTask(id,token,videoId) {
+  async createNewTask(id,token,videoId,name,path,thumbnail = null) {
     let taskDoc = new Task({
       id,
       status: 'queuing',
       token,
-      videoId
+      videoId,
+      name,
+      path,
+      thumbnail
     })
     return await taskDoc.save()
   }
-
-
-  async createNewAudio(name,videoId,path) {
-    let audioDoc = new Audio({name,videoId,path})
-    return await audioDoc.save()
+  async getVideoNameById(videoId) {
+    return await Task.findOne({videoId},'name').exec()
+  }
+  async deleteFailedTaskById(videoId) {
+  	return await Task.findOneAndRemove({videoId,status: 'failed'}).exec()
   }
 
 }

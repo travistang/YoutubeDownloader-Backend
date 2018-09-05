@@ -1,11 +1,22 @@
+/*
+  Consume tasks ONE AT A TIME,
+  - do the actual video downloading,
+  - do the video conversion,
+  - dispatch progress to the progress channel
+*/
 const ytdl     = require('ytdl-core')
 const ffmpeg   = require('fluent-ffmpeg');
+const {
+  queueHost,
+  amqpTopic,
+  amqpPort,reportProgressChannel
+} = require('../endpoint/workerMessanger')
 var kue = require('kue')
  , queue = kue.createQueue({
    prefix: 'q',
    redis: {
-     port: 6379,
-     host: 'redis',
+     port: amqpPort,
+     host: queueHost,
    }
  });
 
@@ -27,7 +38,7 @@ const downloadAudio = (job,done) => {
 
     ffmpeg(stream)
       .audioBitrate(128)
-      .save(`/storage/${id}.mp3`)
+      .save(`/storage/${(job.data.id)}.mp3`)
       // .on('progress', (p) => {
       //   console.log('progress')
       //   job.progress(download,total)
@@ -37,10 +48,12 @@ const downloadAudio = (job,done) => {
       });
   }catch(err) {
     console.log('error encounted:' + JSON.stringify(err))
+    job.failed().error(err)
+    done()
   }
 
 }
 
 // listen to kue here
 
-queue.process('audio',downloadAudio)
+queue.process(amqpTopic,downloadAudio)
