@@ -10,6 +10,8 @@ const Utils = require('./utils')
 const Backend = require('./backend')
 const request = require('request')
 const cheerio = require('cheerio')
+const kue     = require('kue')
+const {queue} = require('./workerMessanger')
 
 const LaunchSubscriber = require('./progressUpdater')
 // initialize stuff
@@ -33,11 +35,7 @@ app.get('/audio/:id', async (req,res) => {
 */
 app.post('/audio/:id',async (req,res) => {
   let id = req.params.id
-  let taskDoc = await Backend.getTaskById(id)
-  if(taskDoc) return res.status(200).json(taskDoc)
-  else {
-    return await Backend.addAudioToQueue(id,res)
-  }
+  return await Backend.addAudioToQueue(id,res)
 })
 
 app.get('/search/:words/:page?', (req,res) => {
@@ -79,5 +77,5 @@ app.get('/search/:words/:page?', (req,res) => {
   })
 })
 
-
+kue.app.listen(3100,() => console.log('kue dashboard listening on port 3100'))
 app.listen(PORT,() => console.log(`api listening on ${PORT}`))

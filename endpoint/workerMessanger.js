@@ -15,13 +15,15 @@
 */
 
 // the configs
-const queueHost = '127.0.0.1'
+const queueHost = 'localhost'
 const amqpTopic = 'audio'
 const amqpPort  = 6379
 const reportProgressChannel = 'progress'
 
 // data structure
+// THIS IS FOLLOWING THE TYPE FROM KUE
 const ProgressType = {
+  pending: 'pending',
   start: 'start',
   failed: 'failed',
   progress: 'progress',
@@ -45,6 +47,7 @@ const publisher = redis.createClient({
 
 class WorkerMessanger {
   static queueJob(task) {
+    console.log('queuing job')
     let job = queue.create(amqpTopic,task)
     // create hooks for the job
     // iterate through the progress type, add hooks to the job
@@ -52,22 +55,21 @@ class WorkerMessanger {
       job.on(type,async (p) => {
         let payload = {
           ...task,
-          progress: {
-            type
-          }
+          status: type
         }
+        console.log('payload',payload)
         if(type === ProgressType.progress) {
-          payload.progress.percentage = p
+          console.log('adding progress',p)
+          payload.progress = p
         }
+        console.log('publishing payload',payload)
         publisher.publish(reportProgressChannel,JSON.stringify(payload))
       })
     })
+    job.save()
     // but first, lets tell the world that this task is now in queue
     let queuePayload = {
-      ...task,
-      progress: {
-        type: 'queue'
-      }
+      ...job.data,
     }
     publisher.publish(reportProgressChannel,JSON.stringify(queuePayload))
     return job
@@ -78,5 +80,8 @@ module.exports = {
   queueHost,
   amqpTopic,
   amqpPort,reportProgressChannel,
+  queue,
+  publisher,
+  ProgressType,
   WorkerMessanger
 }

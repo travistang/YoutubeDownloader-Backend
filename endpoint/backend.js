@@ -4,19 +4,16 @@
 const mongoose = require('mongoose')
 const ytdl = require('youtube-dl')
 const Utils = require('./utils')
-const {WorkerMessanger} = require('./workerMessanger')
+const {WorkerMessanger,ProgressType} = require('./workerMessanger')
 const _ = require('lodash')
 
-const StatusEnum = {
-  PENDING:'PENDING',        // waiting for dowload
-  DOWNLOADING:'DOWNLOADING',    // downloading to server
-  ERROR: 'ERROR',          // error occured
-}
+const StatusEnum = ProgressType // use the same type with the worker
 const Task = mongoose.model('task',{
   id: String, // identify amonst the tasks themselves
   status: {type: String, enum: Object.values(StatusEnum),required: true}, // the job status, one of 'completed, queuing,downloading,...'
   name: String, // the name of the Video
-  thumbnail: String, // the path of thumbnail
+  thumbnail: String, // the path of thumbnail,
+  progress: Number
 })
 
 const url = 'mongodb://localhost:27017/yt'
@@ -56,17 +53,17 @@ class Backend {
     return Utils.RunFunctionWithError(
       async () => {
         console.log('create task')
-        // let randomToken = Utils.RandomToken()
-        let task = new Task({
+        const initialState = {
           id,
-          name,
-          thumbnail,
-          status: StatusEnum.PENDING
-        })
+          name,thumbnail,
+          status: StatusEnum.pending
+        }
+        // let randomToken = Utils.RandomToken()
+        let task = new Task(initialState)
         // TODO: what if the db creates the job but the queue failed to execue?
 
         let result = await task.save()
-        WorkerMessanger.queueJob(task)
+        WorkerMessanger.queueJob(initialState)
         return res.status(201).json(result)
       }
     ,res)
@@ -84,10 +81,10 @@ class Backend {
   static async addAudioToQueue(id,res) {
     return Utils.RunFunctionWithError(
       async () => {
-        console.log('add audio to queue')
         // first check if the audio is in the queue already...
         let taskStatus = await Backend.getTaskById(id)
-        if(taskStatus && taskStatus.status !== StatusEnum.ERROR) {
+        if(taskStatus && taskStatus.status !== StatusEnum.failed) {
+          console.log(`task for ${id} already added`)
           return res.status(200).json(taskStatus) // task is there and no error, so just wait...
         } else if(taskStatus) {
           // task is there but there are also errors...
@@ -100,14 +97,14 @@ class Backend {
     ,res)
   }
   static async updateTaskStatus(taskId,taskStatus) {
-    console.log('updateTaskStatus',taskStatus)
     let payload = _.pick(taskStatus,[
       'id',
       'status',
       'name',
-      'thumbnail'
+      'thumbnail',
+      'progress'
     ])
-    console.log('update payload',payload)
+    console.log('payload',payload)
     await Task
       .findOneAndUpdate({id: taskId},payload)
       .exec()

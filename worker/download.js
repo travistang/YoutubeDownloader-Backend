@@ -9,16 +9,18 @@ const ffmpeg   = require('fluent-ffmpeg');
 const {
   queueHost,
   amqpTopic,
-  amqpPort,reportProgressChannel
+  amqpPort,reportProgressChannel,
+  queue,
+  publisher
 } = require('../endpoint/workerMessanger')
 var kue = require('kue')
- , queue = kue.createQueue({
-   prefix: 'q',
-   redis: {
-     port: amqpPort,
-     host: queueHost,
-   }
- });
+ // , queue = kue.createQueue({
+ //   prefix: 'q',
+ //   redis: {
+ //     port: amqpPort,
+ //     host: queueHost,
+ //   }
+ // });
 
 const downloadAudio = (job,done) => {
 
@@ -38,7 +40,7 @@ const downloadAudio = (job,done) => {
 
     ffmpeg(stream)
       .audioBitrate(128)
-      .save(`/storage/${(job.data.id)}.mp3`)
+      .save(`${(job.data.id)}.mp3`)
       // .on('progress', (p) => {
       //   console.log('progress')
       //   job.progress(download,total)
@@ -49,11 +51,9 @@ const downloadAudio = (job,done) => {
   }catch(err) {
     console.log('error encounted:' + JSON.stringify(err))
     job.failed().error(err)
-    done()
   }
 
 }
 
 // listen to kue here
-
 queue.process(amqpTopic,downloadAudio)

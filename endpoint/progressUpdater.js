@@ -17,14 +17,13 @@ const LaunchSubscriber = () => {
   })
   subscriber.on('subscribe',(channel,count) => {
     // some debugging to make sure that we're indeed subscribing to the channel
-      console.log('subscribed to',channel)
   })
   subscriber.on('message',async (channel,message) => {
     // well redis gives a serialised thing, need to convert it back to an object
     // also redis is not just giving the "message" i sent back, instead its inside _docs...
 
-    message = JSON.parse(message)._doc
-    console.log('received message',message)
+    message = JSON.parse(message)
+    console.log('received message on channel', channel,message)
     await Backend.updateTaskStatus(message.id,message)
     // TODO: websocket message dispatch!
     // TODO: launch download progress!
