@@ -26,7 +26,7 @@ class Backend {
     mongoose.connect(url)
   }
   static async getAudioInfo(id,res) {
-
+    console.log('get audio info')
     return Utils.RunFunctionWithError(async () => {
       let info = await new Promise((resolve,reject) => {
         ytdl.getInfo(id, (err,info) => {
@@ -35,12 +35,13 @@ class Backend {
         })
       })
 
-      return {
+      let infoResult = {
         name: info.title,
         thumbnail: info.thumbnail,
         duration: info.duration,
         id
       }
+      return infoResult
     },res)
   }
 

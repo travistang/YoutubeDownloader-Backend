@@ -2,7 +2,7 @@
  * 	API usage:
  * 	- GET /storage/<audio_id>:
  * 		get the file downloaded
- * 	- 
+ * 	-
  */
 // file holding the implementation of endpoints
 
@@ -151,44 +151,6 @@ app.get('/name/:id',async (req,res) => {
   let result = await db.getVideoNameById(videoId)
   if(result) return res.status(200).json(result)
   else return res.status(404).json({error: "No records of this video id"})
-})
-app.get('/search/:words/:page?', (req,res) => {
-  let words = req.params.words
-  let page = req.params.page
-
-  let url = `https://www.youtube.com/results?search_query=${encodeURIComponent(words)}&page=${page?page:1}`
-  console.log(url)
-  request.get(url,
-  (err,response,body) => {
-    if(err) {
-      res.status(400).send({'status':'error',err})
-    } else {
-      const $ = cheerio.load(body)
-      let result =$('ol.item-section > li')
-        .map((i,el) => {
-            let res = {
-              url: 'https://youtube.com' + $(el).find('a').attr('href'),
-              duration: $(el).find('span.video-time').text(),
-              name: $(el).find('a[title]').first().text(),
-            }
-            let thumbnailEle = $(el).find('img').attr('data-thumb')
-            if(!thumbnailEle)thumbnailEle = $(el).find('img').src
-            res.thumbnail = thumbnailEle
-
-            res.id = res.url.split('?v=')[1]
-            return res
-          })
-       .toArray()
-      .filter(result => {
-	// no playlist
-	if(result.url.indexOf("list=") != -1) return false
-	// with thumbnails only
-	if(!result.thumbnail) return false
-      	return true
-      })
-      return res.status(200).send(result)
-    }
-  })
 })
 kue.app.listen(3100,() => console.log('kue dashboard listening on port 3100'))
 server.listen(3000,() => console.log('frontend listening on port 3000'))
