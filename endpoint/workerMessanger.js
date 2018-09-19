@@ -46,8 +46,7 @@ const publisher = redis.createClient({
 })
 
 class WorkerMessanger {
-  static queueJob(task) {
-    console.log('queuing job')
+  static queueJob(task,socket) {
     let job = queue.create(amqpTopic,task)
     // create hooks for the job
     // iterate through the progress type, add hooks to the job
@@ -57,12 +56,9 @@ class WorkerMessanger {
           ...task,
           status: type
         }
-        console.log('payload',payload)
         if(type === ProgressType.progress) {
-          console.log('adding progress',p)
           payload.progress = p
         }
-        console.log('publishing payload',payload)
         publisher.publish(reportProgressChannel,JSON.stringify(payload))
       })
     })

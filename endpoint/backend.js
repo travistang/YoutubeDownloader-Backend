@@ -17,15 +17,17 @@ const Task = mongoose.model('task',{
 })
 
 const url = 'mongodb://localhost:27017/yt'
+let ioInstance = null
+let socket = null
 class Backend {
-
   static connect() {
     mongoose.connect(url)
   }
   static async getAudioInfo(id,res) {
-    console.log('get audio info')
+
     return Utils.RunFunctionWithError(async () => {
       let info = await new Promise((resolve,reject) => {
+        if(id[0] == '-') id = `youtu.be/${id}` // this is to solve the error received when there is a hyphen at the beginning of the id...
         ytdl.getInfo(id, (err,info) => {
           if(err) reject(err)
           else resolve(info)
@@ -52,7 +54,6 @@ class Backend {
   static async createTask({id,name,thumbnail},res) {
     return Utils.RunFunctionWithError(
       async () => {
-        console.log('create task')
         const initialState = {
           id,
           name,thumbnail,
@@ -63,7 +64,7 @@ class Backend {
         // TODO: what if the db creates the job but the queue failed to execue?
 
         let result = await task.save()
-        WorkerMessanger.queueJob(initialState)
+        WorkerMessanger.queueJob(initialState,socket)
         return res.status(201).json(result)
       }
     ,res)
@@ -104,7 +105,6 @@ class Backend {
       'thumbnail',
       'progress'
     ])
-    console.log('payload',payload)
     await Task
       .findOneAndUpdate({id: taskId},payload)
       .exec()

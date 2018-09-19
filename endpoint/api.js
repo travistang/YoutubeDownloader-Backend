@@ -12,11 +12,13 @@ const request = require('request')
 const cheerio = require('cheerio')
 const kue     = require('kue')
 const {queue} = require('./workerMessanger')
-
+const io = require('socket.io')(server)
 const LaunchSubscriber = require('./progressUpdater')
 // initialize stuff
 Backend.connect()
-const subscriber = LaunchSubscriber()
+
+
+
 // serving static file - the downloaded videos
 app.use('/storage',express.static('/storage'))
 
@@ -43,7 +45,6 @@ app.get('/search/:words/:page?', (req,res) => {
   let page = req.params.page
 
   let url = `https://www.youtube.com/results?search_query=${encodeURIComponent(words)}&page=${page?page:1}`
-  console.log(url)
   request.get(url,
   (err,response,body) => {
     if(err) {
@@ -65,17 +66,19 @@ app.get('/search/:words/:page?', (req,res) => {
             return res
           })
        .toArray()
-      .filter(result => {
-	// no playlist
-	if(result.url.indexOf("list=") != -1) return false
-	// with thumbnails only
-	if(!result.thumbnail) return false
-      	return true
+       .filter(result => {
+         // no playlist
+        if(result.url.indexOf("list=") != -1) return false
+        if(!result.id) return false // no private videos(?)
+        // with thumbnails only
+        return true
       })
+
       return res.status(200).send(result)
     }
   })
 })
 
 kue.app.listen(3100,() => console.log('kue dashboard listening on port 3100'))
-app.listen(PORT,() => console.log(`api listening on ${PORT}`))
+server.listen(PORT,() => console.log(`api listening on ${PORT}`))
+const subscriber = LaunchSubscriber(io)

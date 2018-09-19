@@ -10,23 +10,43 @@ const {
   WorkerMessanger
 } = require('./workerMessanger')
 
-const LaunchSubscriber = () => {
+const LaunchSubscriber = (io) => {
+  // setting up the socket
+  let socket
+  console.log('subscribing console')
+  io.on('connection',(sock) => {
+    console.log('received socket io connection')
+    socket = sock
+    sock.on('create', async (vidId) => { // when new client come and request the info of video id
+      // each "room" has a name of the 'video' id
+      let audio = await Backend.getTaskById(vidId)
+      if(!audio) return // no such task on record...
+      socket.emit(vidId,audio) // gives the last known info to the client
+
+    })
+  })
+
   const subscriber = redis.createClient({
     host: queueHost,
     port: amqpPort
   })
   subscriber.on('subscribe',(channel,count) => {
     // some debugging to make sure that we're indeed subscribing to the channel
+    console.log('subscribed to amqp')
   })
   subscriber.on('message',async (channel,message) => {
     // well redis gives a serialised thing, need to convert it back to an object
     // also redis is not just giving the "message" i sent back, instead its inside _docs...
-
     message = JSON.parse(message)
-    console.log('received message on channel', channel,message)
     await Backend.updateTaskStatus(message.id,message)
     // TODO: websocket message dispatch!
     // TODO: launch download progress!
+    if(socket) {
+      console.log('emitting to socket',message.id)
+      socket.emit(message.id,message)
+    }
+
+
   })
   subscriber.subscribe(reportProgressChannel)
   return subscriber
