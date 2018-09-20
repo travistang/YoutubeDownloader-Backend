@@ -15,7 +15,7 @@
 */
 
 // the configs
-const queueHost = 'localhost'
+const queueHost = 'redis'
 const amqpTopic = 'audio'
 const amqpPort  = 6379
 const reportProgressChannel = 'progress'

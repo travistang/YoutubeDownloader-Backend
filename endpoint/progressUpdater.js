@@ -44,6 +44,11 @@ const LaunchSubscriber = (io) => {
     if(socket) {
       console.log('emitting to socket',message.id)
       socket.emit(message.id,message)
+      if(message.progress && (message.progress == 100 || message.status == 'error')) {
+        // close the connection when it should be terminated...
+        socket.disconnect(0)
+        socket = null
+      }
     }
 
 

@@ -23,7 +23,7 @@ services:
         endpoint:
                 build: ./endpoint
                 ports:
-                        - "3000:3000"
+                        - "3005:3005"
                         - "3100:3100"
                 depends_on:
                         - mongo

@@ -40,7 +40,7 @@ const downloadAudio = (job,done) => {
 
     ffmpeg(stream)
       .audioBitrate(128)
-      .save(`${(job.data.id)}.mp3`)
+      .save(`/storage/${(job.data.id)}.mp3`)
       // .on('progress', (p) => {
       //   console.log('progress')
       //   job.progress(download,total)

@@ -16,7 +16,7 @@ const Task = mongoose.model('task',{
   progress: Number
 })
 
-const url = 'mongodb://localhost:27017/yt'
+const url = 'mongodb://mongo:27017/yt'
 let ioInstance = null
 let socket = null
 class Backend {
