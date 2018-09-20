@@ -12,7 +12,7 @@ const {
   amqpPort,reportProgressChannel,
   queue,
   publisher
-} = require('../endpoint/workerMessanger')
+} = require('./workerMessanger')
 var kue = require('kue')
  // , queue = kue.createQueue({
  //   prefix: 'q',

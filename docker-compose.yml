@@ -12,7 +12,7 @@ services:
                         - "6379:6379"
         # worker for downloading videos
         worker:
-                build: ./worker
+                build: .
                 depends_on:
                         - endpoint
                 links:
