@@ -23,6 +23,10 @@ class Backend {
   static connect() {
     mongoose.connect(url)
   }
+  static async getAllAudios() {
+    let audios = await Task.find({status: StatusEnum.complete}).exec()
+    return audios
+  }
   static async getAudioInfo(id,res) {
 
     return Utils.RunFunctionWithError(async () => {

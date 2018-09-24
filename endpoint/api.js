@@ -22,6 +22,10 @@ Backend.connect()
 // serving static file - the downloaded videos
 app.use('/storage',express.static('/storage'))
 
+app.get('/audio', async (req,res) => {
+  let audios = await Backend.getAllAudios()
+  return res.status(200).json(audios)
+})
 /*
   given the ID of an audio (in youtube's format),
   give the status of the video
