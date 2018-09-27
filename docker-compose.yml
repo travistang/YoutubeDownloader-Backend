@@ -1,5 +1,14 @@
 version: "3"
 services:
+        # The reverse proxy
+#        traefik:
+#                image: traefik
+#                ports:
+#                        - "3005:80"
+#                        - "8081:8080"
+#                volumes:
+#                        - /var/run/docker.sock:/var/run/docker.sock
+#                        - ./traefik.toml:/etc/traefik/traefik.toml
         # The database
         mongo:
                 image: mongo
@@ -24,6 +33,11 @@ services:
                 build: ./endpoint
                 ports:
                         - "3005:3005"
+#                        - "3003:3003"
+#                        - "3004:3004"
+#                        - "3000:3000"
+#                        - "3001:3001"
+#                        - "3002:3002"
                         - "3100:3100"
                 depends_on:
                         - mongo

@@ -21,7 +21,10 @@ const LaunchSubscriber = (io) => {
       let audio = await Backend.getTaskById(vidId)
       if(!audio) return // no such task on record...
       sock.emit(vidId,audio) // gives the last known info to the client
-
+      if((audio.progress && audio.progress == 100) || audio.status === 'error') {
+        // nothing more to report, close the socket
+        sock.disconnect(0)
+      }
     })
 
     const subscriber = redis.createClient({

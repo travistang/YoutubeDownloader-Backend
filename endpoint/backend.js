@@ -10,6 +10,7 @@ const _ = require('lodash')
 const StatusEnum = ProgressType // use the same type with the worker
 const Task = mongoose.model('task',{
   id: String, // identify amonst the tasks themselves
+  duration: String,
   status: {type: String, enum: Object.values(StatusEnum),required: true}, // the job status, one of 'completed, queuing,downloading,...'
   name: String, // the name of the Video
   thumbnail: String, // the path of thumbnail,
@@ -24,7 +25,7 @@ class Backend {
     mongoose.connect(url)
   }
   static async getAllAudios() {
-    let audios = await Task.find({status: StatusEnum.complete}).exec()
+    let audios = await Task.find({}).exec()
     return audios
   }
   static async getAudioInfo(id,res) {
@@ -55,12 +56,11 @@ class Backend {
   /*
     Function that creates a task and insert it to the database
   */
-  static async createTask({id,name,thumbnail},res) {
+  static async createTask(info,res) {
     return Utils.RunFunctionWithError(
       async () => {
         const initialState = {
-          id,
-          name,thumbnail,
+          ...info,
           status: StatusEnum.pending
         }
         // let randomToken = Utils.RandomToken()
@@ -107,6 +107,7 @@ class Backend {
       'status',
       'name',
       'thumbnail',
+      'duration',
       'progress'
     ])
     await Task
